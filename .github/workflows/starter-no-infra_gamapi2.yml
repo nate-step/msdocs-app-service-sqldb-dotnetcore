@@ -26,10 +26,13 @@ jobs:
         run: dotnet build --configuration Release
 
       - name: dotnet publish
-        run: |
-          dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
-          dotnet tool install --global dotnet-ef
-          dotnet ef migrations bundle --output-dir ${{env.DOTNET_ROOT}}/myapp/migrationsbundle
+        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+
+      - name: Install EF Core tool
+        run: dotnet tool install -g dotnet-ef --version 8.*
+
+      - name: Create migrationsbundle
+        run: dotnet ef migrations bundle --runtime linux-x64 -o ${{env.DOTNET_ROOT}}/myapp/migrationsbundle
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3

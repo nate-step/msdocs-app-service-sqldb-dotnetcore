@@ -357,3 +357,7 @@ MigrationBackup/
 
 # OSX
 .DS_Store
+
+# Secrets
+gamapi.json
+/gamapi.json

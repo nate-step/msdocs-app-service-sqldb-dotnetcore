@@ -8,9 +8,12 @@ namespace DotNetCoreSqlDb.Models
         public string? Id { get; set; }
         public string? Name { get; set; }
         public string? Code { get; set; }
-        [DisplayName("Created Date")]
-        [DataType(DataType.Date)]
-        [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd}", ApplyFormatInEditMode = true)]
-        public DateTime CreatedDate { get; set; }
+
+        public ParentPath(string id, string name, string code)
+        {
+            Id = id;
+            Name = name;
+            Code = code;
+        }
     }
 }

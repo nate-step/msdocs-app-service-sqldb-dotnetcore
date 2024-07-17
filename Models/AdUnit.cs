@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Google.Api.Ads.AdManager.v202308;
 
 namespace DotNetCoreSqlDb.Models
 {
@@ -11,9 +12,7 @@ namespace DotNetCoreSqlDb.Models
         public string? Code { get; set; }
         public string? Status { get; set; }
         public ParentPath[]? ParentPath { get; set; }
-        [DisplayName("Created Date")]
-        [DataType(DataType.Date)]
-        [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd}", ApplyFormatInEditMode = true)]
-        public DateTime CreatedDate { get; set; }
+        public AdUnitSize[]? Sizes { get; set; }
+        public List<AdUnit>? Children { get; set; }
     }
 }

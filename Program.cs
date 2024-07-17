@@ -14,7 +14,7 @@ if(builder.Environment.IsDevelopment())
 {
     builder.Services.AddDbContext<MyDatabaseContext>(options =>
         options.UseSqlServer(builder.Configuration.GetConnectionString("AZURE_SQL_CONNECTIONSTRING")));
-    //     options.UseSqlServer(builder.Configuration.GetConnectionString("MyDbConnection")));
+    //     options.UseSqlServer(builder.Configuration.GetConnectionString("MyDbConnection")));  // Use local SQL Server in future
     builder.Services.AddDistributedMemoryCache();
 }
 else

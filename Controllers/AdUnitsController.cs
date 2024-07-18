@@ -25,7 +25,7 @@ namespace DotNetCoreSqlDb.Controllers
         /// </summary>
         AdManagerUser user;
         public static StringBuilder sb = new StringBuilder();
-        public static string excludeAdUnits = "21808883114, 21808959844, 21809118501, 22452709038, 21842098369, 22569845256, 22894638438, 22911316057, 21838210805, 21877986668";
+        public static string excludeAdUnits = "21808883114, 21808959844, 21809118501, 22452709038, 21842098369, 22569845256, 22894638438, 22911316057, 21838210805, 21877986668, 22119756265";
 
         /// <summary>
         /// Constructor for AdUnitsController

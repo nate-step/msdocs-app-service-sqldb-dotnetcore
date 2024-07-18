@@ -90,12 +90,18 @@ namespace DotNetCoreSqlDb.Controllers
                                     Status = adUnit.status.ToString(),
                                     ParentId = adUnit.parentId,
                                     Code = adUnit.adUnitCode,
-                                    ParentPath = adUnit.parentPath.Select(p => new Models.ParentPath
+                                    ParentPath = adUnit.parentPath?.Select(p => new Models.ParentPath
                                     (
                                         p.id,
                                         p.name,
                                         p.adUnitCode
                                     )).ToArray(),
+                                    Sizes = adUnit.adUnitSizes?.Select(s => new Models.AdUnitSize(
+                                        s.fullDisplayString,
+                                        s.environmentType.ToString(),
+                                        s.size.width,
+                                        s.size.height
+                                    )).ToArray()
                                 };
 
                                 adUnits.Add(newAdUnit);
@@ -163,13 +169,13 @@ namespace DotNetCoreSqlDb.Controllers
                                     Status = adUnit.status.ToString(),
                                     ParentId = adUnit.parentId,
                                     Code = adUnit.adUnitCode,
-                                    ParentPath = adUnit.parentPath.Select(p => new Models.ParentPath
+                                    ParentPath = adUnit.parentPath?.Select(p => new Models.ParentPath
                                     (
                                         p.id,
                                         p.name,
                                         p.adUnitCode
                                     )).ToArray(),
-                                    Sizes = adUnit.adUnitSizes.Select(s => new Models.AdUnitSize(
+                                    Sizes = adUnit.adUnitSizes?.Select(s => new Models.AdUnitSize(
                                         s.fullDisplayString,
                                         s.environmentType.ToString(),
                                         s.size.width,
@@ -253,6 +259,12 @@ namespace DotNetCoreSqlDb.Controllers
             }
         }
 
+        /// <summary>
+        /// Build the Ad Unit tree.
+        /// </summary>
+        /// <param name="rootAdUnit"></param>
+        /// <param name="allAdUnits"></param>
+        /// <returns> Ad Unit tree </returns>
         private Models.AdUnit BuildAdUnitTree(Google.Api.Ads.AdManager.v202405.AdUnit? rootAdUnit, Google.Api.Ads.AdManager.v202405.AdUnit[] allAdUnits)
         {
             if (rootAdUnit == null)
@@ -283,7 +295,11 @@ namespace DotNetCoreSqlDb.Controllers
             return root;
         }         
 
-
+        /// <summary>
+        /// Get all ad units for a given parent ID.
+        /// </summary>
+        /// <param name="user"></param>
+        /// <returns> List of ad units </returns>
         static Google.Api.Ads.AdManager.v202405.AdUnit[] GetAllAdUnits(AdManagerUser user)
         {
             using (InventoryService inventoryService = user.GetService<InventoryService>())
@@ -317,192 +333,6 @@ namespace DotNetCoreSqlDb.Controllers
                 return adUnits.ToArray();
             }
         }
-
-        static Google.Api.Ads.AdManager.v202405.AdUnit? FindRootAdUnit(AdManagerUser user)
-        {
-            using (InventoryService inventoryService = user.GetService<InventoryService>())
-            {
-                // Create a statement to only select the root ad unit.
-                StatementBuilder statementBuilder = new StatementBuilder()
-                    .Where("parentId IS NULL AND status = :status AND NOT id IN (" + excludeAdUnits + ")")
-                    .OrderBy("name ASC")
-                    .Limit(1)
-                    .AddValue("status", InventoryStatus.ACTIVE.ToString());
-
-                // Get ad units by statement.
-                AdUnitPage page =
-                    inventoryService.getAdUnitsByStatement(statementBuilder.ToStatement());
-
-                if (page.results != null)
-                {
-                    return page.results[0];
-                }
-
-                return null;
-            }
-        }
-
-        //         /// <summary>
-        //         /// Get the whole Ad Unit tree for STEP Network.
-        //         /// </summary>
-        //         /// <returns> All Active Ad Units in a tree stack. </returns>
-        //         [HttpGet("tree")]
-        //         public IActionResult AdUnitsTree()
-        //         {
-
-        //             try
-        //             {
-        //                 // Get all ad units.
-        //                 Google.Api.Ads.AdManager.v202405.AdUnit[] allAdUnits = GetAllAdUnits(user);
-
-        //                 // Find the root ad unit. rootAdUnit can also be set to child unit to
-        //                 // only build and display a portion of the tree.
-        //                 // i.e. AdUnit adUnit =
-        //                 //          inventoryService.getAdUnit("INSERT_AD_UNIT_HERE")
-        // #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
-        //                 Google.Api.Ads.AdManager.v202405.AdUnit rootAdUnit = FindRootAdUnit(user);
-        // #pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
-
-        //                 if (rootAdUnit == null)
-        //                 {
-        //                     Console.WriteLine("Could not build tree. No root ad unit found.");
-        //                     return BadRequest("Could not build tree. No root ad unit found.");
-        //                 }
-        //                 else
-        //                 {
-        //                     BuildAndDisplayAdUnitTree(rootAdUnit, allAdUnits);
-        //                     return Ok(sb.ToString());
-        //                 }
-        //             }
-        //             catch (Exception e)
-        //             {
-        //                 Console.WriteLine("Failed to get ad unit. Exception says \"{0}\"", e.Message);
-        //                 return BadRequest($"Failed to get ad unit. Exception says \"{e.Message}\"");
-        //             }
-
-        //             static Google.Api.Ads.AdManager.v202405.AdUnit[] GetAllAdUnits(AdManagerUser user)
-        //             {
-        //                 using (InventoryService inventoryService = user.GetService<InventoryService>())
-        //                 {
-        //                     // Create list to hold all ad units.
-        //                     List<Google.Api.Ads.AdManager.v202405.AdUnit> adUnits = new List<Google.Api.Ads.AdManager.v202405.AdUnit>();
-
-        //                     // Create a statement to get all ad units.
-        //                     StatementBuilder statementBuilder = new StatementBuilder()
-        //                         .Where("status = :status AND NOT id IN (" + excludeAdUnits + ")")
-        //                         .OrderBy("name ASC")
-        //                         .Limit(StatementBuilder.SUGGESTED_PAGE_LIMIT)
-        //                         .AddValue("status", InventoryStatus.ACTIVE.ToString());
-
-        //                     // Set default for page.
-        //                     AdUnitPage page = new AdUnitPage();
-
-        //                     do
-        //                     {
-        //                         // Get ad units by statement.
-        //                         page = inventoryService.getAdUnitsByStatement(statementBuilder.ToStatement());
-
-        //                         if (page.results != null)
-        //                         {
-        //                             adUnits.AddRange(page.results);
-        //                         }
-
-        //                         statementBuilder.IncreaseOffsetBy(StatementBuilder.SUGGESTED_PAGE_LIMIT);
-        //                     } while (statementBuilder.GetOffset() < page.totalResultSetSize);
-
-        //                     return adUnits.ToArray();
-        //                 }
-        //             }
-
-        //             static Google.Api.Ads.AdManager.v202405.AdUnit? FindRootAdUnit(AdManagerUser user)
-        //             {
-        //                 using (InventoryService inventoryService = user.GetService<InventoryService>())
-        //                 {
-        //                     // Create a statement to only select the root ad unit.
-        //                     StatementBuilder statementBuilder = new StatementBuilder()
-        //                         .Where("parentId IS NULL AND status = :status AND NOT id IN (" + excludeAdUnits + ")")
-        //                         .OrderBy("name ASC")
-        //                         .Limit(1)
-        //                         .AddValue("status", InventoryStatus.ACTIVE.ToString());
-
-        //                     // Get ad units by statement.
-        //                     AdUnitPage page =
-        //                         inventoryService.getAdUnitsByStatement(statementBuilder.ToStatement());
-
-        //                     if (page.results != null)
-        //                     {
-        //                         return page.results[0];
-        //                     }
-
-        //                     return null;
-        //                 }
-        //             }
-
-        //             static void BuildAndDisplayAdUnitTree(Google.Api.Ads.AdManager.v202405.AdUnit root, Google.Api.Ads.AdManager.v202405.AdUnit[] units)
-        //             {
-        //                 Dictionary<String, List<Google.Api.Ads.AdManager.v202405.AdUnit>> treeMap = new Dictionary<String, List<Google.Api.Ads.AdManager.v202405.AdUnit>>();
-
-        //                 foreach (Google.Api.Ads.AdManager.v202405.AdUnit unit in units)
-        //                 {
-        //                     if (unit.parentId != null)
-        //                     {
-        //                         if (treeMap.ContainsKey(unit.parentId) == false)
-        //                         {
-        //                             treeMap.Add(unit.parentId, new List<Google.Api.Ads.AdManager.v202405.AdUnit>());
-        //                         }
-
-        //                         treeMap[unit.parentId].Add(unit);
-        //                     }
-        //                 }
-
-        //                 if (root != null)
-        //                 {
-        //                     DisplayInventoryTree(root, treeMap);
-        //                 }
-        //                 else
-        //                 {
-        //                     Console.WriteLine("No root unit found.");
-        //                 }
-        //             }
-
-        //             static void DisplayInventoryTree(Google.Api.Ads.AdManager.v202405.AdUnit root,
-        //                 Dictionary<String, List<Google.Api.Ads.AdManager.v202405.AdUnit>> treeMap)
-        //             {
-        //                 DisplayInventoryTreeHelper(root, treeMap, 0);
-        //             }
-
-        //             static void DisplayInventoryTreeHelper(Google.Api.Ads.AdManager.v202405.AdUnit root,
-        //                 Dictionary<String, List<Google.Api.Ads.AdManager.v202405.AdUnit>> treeMap, int depth)
-        //             {
-        //                 Console.WriteLine(GenerateTab(depth) + root.name + " (" + root.id + ")");
-        //                 sb.AppendLine(GenerateTab(depth) + root.name + " (" + root.id + ")");
-
-        //                 if (treeMap.ContainsKey(root.id))
-        //                 {
-        //                     foreach (Google.Api.Ads.AdManager.v202405.AdUnit child in treeMap[root.id])
-        //                     {
-        //                         DisplayInventoryTreeHelper(child, treeMap, depth + 1);
-        //                     }
-        //                 }
-        //             }
-
-        //             static String GenerateTab(int depth)
-        //             {
-        //                 StringBuilder builder = new StringBuilder();
-        //                 if (depth != 0)
-        //                 {
-        //                     builder.Append("  ");
-        //                 }
-
-        //                 for (int i = 1; i < depth; i++)
-        //                 {
-        //                     builder.Append("|  ");
-        //                 }
-
-        //                 builder.Append("+--");
-        //                 return builder.ToString();
-        //             }
-        //         }
 
     }
 }

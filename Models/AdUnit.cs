@@ -11,6 +11,7 @@ namespace DotNetCoreSqlDb.Models
         public string? Name { get; set; }
         public string? Code { get; set; }
         public string? Status { get; set; }
+        public bool? IsInterstitial { get; set; }
         public ParentPath[]? ParentPath { get; set; }
         public AdUnitSize[]? Sizes { get; set; }
         public List<AdUnit>? Children { get; set; }

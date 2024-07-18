@@ -169,6 +169,7 @@ namespace DotNetCoreSqlDb.Controllers
                                     Status = adUnit.status.ToString(),
                                     ParentId = adUnit.parentId,
                                     Code = adUnit.adUnitCode,
+                                    IsInterstitial = adUnit.isInterstitial,
                                     ParentPath = adUnit.parentPath?.Select(p => new Models.ParentPath
                                     (
                                         p.id,

@@ -45,6 +45,63 @@ namespace DotNetCoreSqlDb.Controllers
         }
 
         /// <summary>
+        /// Get all publisher sites.
+        /// </summary>
+        /// <returns> List of all publisher sites in STEP Network. </returns>
+        [HttpGet("publishers")]
+        public IActionResult GetChildPublishers()
+        {
+            using (SiteService siteService = user.GetService<SiteService>())
+            {
+                try
+                {
+                    // Create a statement to select sites.
+                    int pageSize = StatementBuilder.SUGGESTED_PAGE_LIMIT;
+                    StatementBuilder statementBuilder =
+                        new StatementBuilder().OrderBy("url ASC").Limit(pageSize);
+                    List<SiteMetadata> sites = new List<SiteMetadata>();
+
+                    // Retrieve a small amount of sites at a time, paging through until all
+                    // sites have been retrieved.
+                    int totalResultSetSize = 0;
+                    do
+                    {
+                        SitePage page =
+                            siteService.getSitesByStatement(statementBuilder.ToStatement());
+
+                        // Print out some information for each site.
+                        if (page.results != null)
+                        {
+                            totalResultSetSize = page.totalResultSetSize;
+                            int i = page.startIndex;
+                            foreach (Site site in page.results)
+                            {
+                                SiteMetadata newSite = new SiteMetadata
+                                {
+                                    Id = site.id,
+                                    Url = site.url,
+                                    Active = site.active.ToString(),
+                                    ApprovalStatus = site.approvalStatus.ToString(),
+                                    ChildNetworkCode = site.childNetworkCode,
+                                    DisapprovalReasons = site.disapprovalReasons
+                                };
+                                sites.Add(newSite);
+                            }
+                        }
+
+                        statementBuilder.IncreaseOffsetBy(pageSize);
+                    } while (statementBuilder.GetOffset() < totalResultSetSize);
+
+                    return Ok(sites);
+                }
+                catch (Exception e)
+                {
+                    return BadRequest($"Failed to get child publishers. Exception says \"{e.Message}\"");
+                }
+            }
+        }
+
+        /// <summary>
         /// Get all ad units for STEP Network (top level ad units). Mainly Publisher Group Ad Units.
         /// </summary>
         [HttpGet]
@@ -71,7 +128,7 @@ namespace DotNetCoreSqlDb.Controllers
 
                 try
                 {
-                    List<Models.AdUnit> adUnits = new List<Models.AdUnit>();
+                    List<AdUnitMetadata> adUnits = new List<AdUnitMetadata>();
 
                     do
                     {
@@ -83,25 +140,47 @@ namespace DotNetCoreSqlDb.Controllers
                         {
                             foreach (Google.Api.Ads.AdManager.v202405.AdUnit adUnit in page.results)
                             {
-                                Models.AdUnit newAdUnit = new Models.AdUnit
+                                AdUnitMetadata newAdUnit = new AdUnitMetadata
                                 {
                                     Id = adUnit.id,
                                     Name = adUnit.name,
                                     Status = adUnit.status.ToString(),
                                     ParentId = adUnit.parentId,
                                     Code = adUnit.adUnitCode,
-                                    ParentPath = adUnit.parentPath?.Select(p => new Models.ParentPath
+                                    ParentPath = adUnit.parentPath?.Select(p => new ParentPathMetadata
                                     (
                                         p.id,
                                         p.name,
                                         p.adUnitCode
                                     )).ToArray(),
-                                    Sizes = adUnit.adUnitSizes?.Select(s => new Models.AdUnitSize(
+                                    Sizes = adUnit.adUnitSizes?.Select(s => new AdUnitSizeMetadata(
                                         s.fullDisplayString,
                                         s.environmentType.ToString(),
                                         s.size.width,
                                         s.size.height
-                                    )).ToArray()
+                                    )).ToArray(),
+                                    LastModifiedDate = new System.DateTime(
+                                        adUnit.lastModifiedDateTime.date.year,
+                                        adUnit.lastModifiedDateTime.date.month,
+                                        adUnit.lastModifiedDateTime.date.day,
+                                        adUnit.lastModifiedDateTime.hour,
+                                        adUnit.lastModifiedDateTime.minute,
+                                        adUnit.lastModifiedDateTime.second
+                                    ).AddHours(9),
+                                    ApplicationId = adUnit.applicationId,
+                                    AppliedLabelFrequencyCaps = adUnit.appliedLabelFrequencyCaps,
+                                    AppliedLabels = adUnit.appliedLabels,
+                                    AppliedTeamIds = adUnit.appliedTeamIds,
+                                    EffectiveAppliedLabels = adUnit.effectiveAppliedLabels,
+                                    EffectiveTeamIds = adUnit.effectiveTeamIds,
+                                    EffectiveLabelFrequencyCaps = adUnit.effectiveLabelFrequencyCaps,
+                                    ExplicitlyTargeted = adUnit.explicitlyTargeted,
+                                    IsFluid = adUnit.isFluid,
+                                    IsInterstitial = adUnit.isInterstitial,
+                                    IsNative = adUnit.isNative,
+                                    RefreshRate = adUnit.refreshRate,
+                                    SmartSizeMode = adUnit.smartSizeMode,
+                                    TargetWindow = adUnit.targetWindow
                                 };
 
                                 adUnits.Add(newAdUnit);
@@ -150,7 +229,7 @@ namespace DotNetCoreSqlDb.Controllers
 
                 try
                 {
-                    List<Models.AdUnit> adUnits = new List<Models.AdUnit>();
+                    List<AdUnitMetadata> adUnits = new List<AdUnitMetadata>();
 
                     do
                     {
@@ -162,26 +241,56 @@ namespace DotNetCoreSqlDb.Controllers
                         {
                             foreach (Google.Api.Ads.AdManager.v202405.AdUnit adUnit in page.results)
                             {
-                                Models.AdUnit newAdUnit = new Models.AdUnit
+                                System.DateTime lastModifiedDateTime = new System.DateTime(
+                                    adUnit.lastModifiedDateTime.date.year,
+                                    adUnit.lastModifiedDateTime.date.month,
+                                    adUnit.lastModifiedDateTime.date.day,
+                                    adUnit.lastModifiedDateTime.hour,
+                                    adUnit.lastModifiedDateTime.minute,
+                                    adUnit.lastModifiedDateTime.second
+                                ).AddHours(9);
+
+                                AdUnitMetadata newAdUnit = new AdUnitMetadata
                                 {
                                     Id = adUnit.id,
                                     Name = adUnit.name,
                                     Status = adUnit.status.ToString(),
                                     ParentId = adUnit.parentId,
                                     Code = adUnit.adUnitCode,
-                                    IsInterstitial = adUnit.isInterstitial,
-                                    ParentPath = adUnit.parentPath?.Select(p => new Models.ParentPath
+                                    ParentPath = adUnit.parentPath?.Select(p => new ParentPathMetadata
                                     (
                                         p.id,
                                         p.name,
                                         p.adUnitCode
                                     )).ToArray(),
-                                    Sizes = adUnit.adUnitSizes?.Select(s => new Models.AdUnitSize(
+                                    Sizes = adUnit.adUnitSizes?.Select(s => new AdUnitSizeMetadata(
                                         s.fullDisplayString,
                                         s.environmentType.ToString(),
                                         s.size.width,
                                         s.size.height
-                                    )).ToArray()
+                                    )).ToArray(),
+                                    LastModifiedDate = new System.DateTime(
+                                        adUnit.lastModifiedDateTime.date.year,
+                                        adUnit.lastModifiedDateTime.date.month,
+                                        adUnit.lastModifiedDateTime.date.day,
+                                        adUnit.lastModifiedDateTime.hour,
+                                        adUnit.lastModifiedDateTime.minute,
+                                        adUnit.lastModifiedDateTime.second
+                                    ).AddHours(9),
+                                    ApplicationId = adUnit.applicationId,
+                                    AppliedLabelFrequencyCaps = adUnit.appliedLabelFrequencyCaps,
+                                    AppliedLabels = adUnit.appliedLabels,
+                                    AppliedTeamIds = adUnit.appliedTeamIds,
+                                    EffectiveAppliedLabels = adUnit.effectiveAppliedLabels,
+                                    EffectiveTeamIds = adUnit.effectiveTeamIds,
+                                    EffectiveLabelFrequencyCaps = adUnit.effectiveLabelFrequencyCaps,
+                                    ExplicitlyTargeted = adUnit.explicitlyTargeted,
+                                    IsFluid = adUnit.isFluid,
+                                    IsInterstitial = adUnit.isInterstitial,
+                                    IsNative = adUnit.isNative,
+                                    RefreshRate = adUnit.refreshRate,
+                                    SmartSizeMode = adUnit.smartSizeMode,
+                                    TargetWindow = adUnit.targetWindow
                                 };
 
                                 adUnits.Add(newAdUnit);
@@ -218,11 +327,11 @@ namespace DotNetCoreSqlDb.Controllers
                     Google.Api.Ads.AdManager.v202405.AdUnitSize[] adUnitSizes =
                     inventoryService.getAdUnitSizesByStatement(statementBuilder.ToStatement());
 
-                    List<Models.AdUnitSize> adUnitSizesList = new List<Models.AdUnitSize>();
+                    List<AdUnitSizeMetadata> adUnitSizesList = new List<AdUnitSizeMetadata>();
 
                     foreach (Google.Api.Ads.AdManager.v202405.AdUnitSize adUnitSize in adUnitSizes)
                     {
-                        adUnitSizesList.Add(new Models.AdUnitSize(adUnitSize.fullDisplayString, adUnitSize.environmentType.ToString(), adUnitSize.size.width, adUnitSize.size.height));
+                        adUnitSizesList.Add(new AdUnitSizeMetadata(adUnitSize.fullDisplayString, adUnitSize.environmentType.ToString(), adUnitSize.size.width, adUnitSize.size.height));
                     }
 
                     return Ok(adUnitSizesList);
@@ -250,7 +359,7 @@ namespace DotNetCoreSqlDb.Controllers
                 Google.Api.Ads.AdManager.v202405.AdUnit? rootAdUnit = allAdUnits.FirstOrDefault(a => a.parentId == "21808957681");
 
                 // Build the ad unit tree.
-                Models.AdUnit root = BuildAdUnitTree(rootAdUnit, allAdUnits);
+                AdUnitMetadata root = BuildAdUnitTree(rootAdUnit, allAdUnits);
 
                 return Ok(root);
             }
@@ -266,35 +375,35 @@ namespace DotNetCoreSqlDb.Controllers
         /// <param name="rootAdUnit"></param>
         /// <param name="allAdUnits"></param>
         /// <returns> Ad Unit tree </returns>
-        private Models.AdUnit BuildAdUnitTree(Google.Api.Ads.AdManager.v202405.AdUnit? rootAdUnit, Google.Api.Ads.AdManager.v202405.AdUnit[] allAdUnits)
+        private AdUnitMetadata BuildAdUnitTree(Google.Api.Ads.AdManager.v202405.AdUnit? rootAdUnit, Google.Api.Ads.AdManager.v202405.AdUnit[] allAdUnits)
         {
             if (rootAdUnit == null)
             {
                 return null;
             }
-        
-            Models.AdUnit root = new Models.AdUnit
+
+            AdUnitMetadata root = new AdUnitMetadata
             {
                 Id = rootAdUnit.id,
                 Name = rootAdUnit.name,
                 Status = rootAdUnit.status.ToString(),
                 ParentId = rootAdUnit.parentId,
                 Code = rootAdUnit.adUnitCode,
-                Sizes = rootAdUnit.adUnitSizes?.Select(s => new Models.AdUnitSize(s.fullDisplayString, s.environmentType.ToString(), s.size.width, s.size.height)).ToArray(),
-                Children = new List<Models.AdUnit>()
+                Sizes = rootAdUnit.adUnitSizes?.Select(s => new AdUnitSizeMetadata(s.fullDisplayString, s.environmentType.ToString(), s.size.width, s.size.height)).ToArray(),
+                Children = new List<AdUnitMetadata>()
             };
-        
+
             foreach (Google.Api.Ads.AdManager.v202405.AdUnit adUnit in allAdUnits)
             {
                 if (adUnit.parentId == rootAdUnit.id)
                 {
-                    Models.AdUnit child = BuildAdUnitTree(adUnit, allAdUnits);
+                    AdUnitMetadata child = BuildAdUnitTree(adUnit, allAdUnits);
                     root.Children.Add(child);
                 }
             }
-        
+
             return root;
-        }         
+        }
 
         /// <summary>
         /// Get all ad units for a given parent ID.

@@ -3,14 +3,14 @@ using System.ComponentModel.DataAnnotations;
 
 namespace DotNetCoreSqlDb.Models
 {
-    public class AdUnitSize
+    public class AdUnitSizeMetadata
     {
         public string Size { get; set; }
         public string? EnvironmentType { get; set; }
         public int? Width { get; set; }
         public int? Height { get; set; }
 
-        public AdUnitSize(string size, string environmentType, int width, int height)
+        public AdUnitSizeMetadata(string size, string environmentType, int width, int height)
         {
             Size = size;
             EnvironmentType = environmentType;

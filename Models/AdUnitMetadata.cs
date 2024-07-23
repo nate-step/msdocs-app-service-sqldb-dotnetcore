@@ -28,6 +28,17 @@ namespace DotNetCoreSqlDb.Models
         public ParentPathMetadata[]? ParentPath { get; set; }
         public AdUnitSizeMetadata[]? Sizes { get; set; }
         public List<AdUnitMetadata>? Children { get; set; }
+        public SiteMetadata? Site { get; set; }
+        public string? Path 
+        { 
+            get 
+            { 
+                if (Site != null && ParentPath != null)
+                    return $"/21809957681,{Site?.ChildNetworkCode}/{ParentPath?.Last()?.Code}/{Name}"; 
+                else return null;
+            } 
+            set { } 
+        }
         [DisplayName("Last Modified Date")]
         [DataType(DataType.Date)]
         [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd}", ApplyFormatInEditMode = true)]

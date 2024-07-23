@@ -25,7 +25,7 @@ namespace DotNetCoreSqlDb.Controllers
         /// </summary>
         AdManagerUser user;
         public static StringBuilder sb = new StringBuilder();
-        public static string excludeAdUnits = "21808883114, 21808959844, 21809118501, 22452709038, 21842098369, 22569845256, 22894638438, 22911316057, 21838210805, 21877986668, 22119756265";
+        public static string excludeAdUnits = "21808883114, 21808959844, 21809118501, 22452709038, 21842098369, 22569845256, 22894638438, 22911316057, 21838210805, 21877986668, 22119756265, 22911316057, 22894638438";
 
         /// <summary>
         /// Constructor for AdUnitsController
@@ -102,6 +102,111 @@ namespace DotNetCoreSqlDb.Controllers
         }
 
         /// <summary>
+        /// Get publisher sites by URL.
+        /// </summary>
+        /// <returns> List of publisher sites matching URL. </returns>
+        [HttpGet("publishers/{url}")]
+        public IActionResult GetChildPublishers(string? url)
+        {
+            using (SiteService siteService = user.GetService<SiteService>())
+            {
+                try
+                {
+                    // Create a statement to select sites.
+                    int pageSize = StatementBuilder.SUGGESTED_PAGE_LIMIT;
+                    StatementBuilder statementBuilder =
+                        new StatementBuilder()
+                        .Where("url LIKE :url")
+                        .OrderBy("url ASC").Limit(pageSize)
+                        .AddValue("url", url);
+                    List<SiteMetadata> sites = new List<SiteMetadata>();
+
+                    // Retrieve a small amount of sites at a time, paging through until all
+                    // sites have been retrieved.
+                    int totalResultSetSize = 0;
+                    do
+                    {
+                        SitePage page =
+                            siteService.getSitesByStatement(statementBuilder.ToStatement());
+
+                        // Print out some information for each site.
+                        if (page.results != null)
+                        {
+                            totalResultSetSize = page.totalResultSetSize;
+                            int i = page.startIndex;
+                            foreach (Site site in page.results)
+                            {
+                                SiteMetadata newSite = new SiteMetadata
+                                {
+                                    Id = site.id,
+                                    Url = site.url,
+                                    Active = site.active.ToString(),
+                                    ApprovalStatus = site.approvalStatus.ToString(),
+                                    ChildNetworkCode = site.childNetworkCode,
+                                    DisapprovalReasons = site.disapprovalReasons
+                                };
+                                sites.Add(newSite);
+                            }
+                        }
+
+                        statementBuilder.IncreaseOffsetBy(pageSize);
+                    } while (statementBuilder.GetOffset() < totalResultSetSize);
+
+                    return Ok(sites);
+                }
+                catch (Exception e)
+                {
+                    return BadRequest($"Failed to get child publishers. Exception says \"{e.Message}\"");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get a publisher site by URL.
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns> Publisher site matching URL. </returns>
+        private SiteMetadata GetSite(string? url)
+        {
+            using (SiteService siteService = user.GetService<SiteService>())
+            {
+                try
+                {
+                    // Create a statement to select sites.
+                    int pageSize = StatementBuilder.SUGGESTED_PAGE_LIMIT;
+                    StatementBuilder statementBuilder =
+                        new StatementBuilder()
+                        .Where("url LIKE :url")
+                        .OrderBy("url ASC").Limit(pageSize)
+                        .AddValue("url", url);
+
+                    SitePage page =
+                        siteService.getSitesByStatement(statementBuilder.ToStatement());
+
+                    // Print out some information for each site.
+                    if (page.results != null)
+                    {
+                        return new SiteMetadata
+                        {
+                            Id = page.results[0].id,
+                            Url = page.results[0].url,
+                            Active = page.results[0].active.ToString(),
+                            ApprovalStatus = page.results[0].approvalStatus.ToString(),
+                            ChildNetworkCode = page.results[0].childNetworkCode,
+                            DisapprovalReasons = page.results[0].disapprovalReasons
+                        };
+                    }
+                    else return null;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Failed to get child publishers. Exception says \"{e.Message}\"");
+                    return null;
+                }
+            }
+        }
+
+        /// <summary>
         /// Get all ad units for STEP Network (top level ad units). Mainly Publisher Group Ad Units.
         /// </summary>
         [HttpGet]
@@ -138,7 +243,7 @@ namespace DotNetCoreSqlDb.Controllers
 
                         if (page.results != null)
                         {
-                            foreach (Google.Api.Ads.AdManager.v202405.AdUnit adUnit in page.results)
+                            foreach (AdUnit adUnit in page.results)
                             {
                                 AdUnitMetadata newAdUnit = new AdUnitMetadata
                                 {
@@ -201,7 +306,7 @@ namespace DotNetCoreSqlDb.Controllers
         }
 
         /// <summary>
-        /// Get all ad units for a given parent ID.
+        /// Get all ad units for a given parent ID - Used for domains and their adunits.
         /// </summary>
         /// <param name="id"></param>
         /// <returns> List of ad units </returns>
@@ -239,8 +344,9 @@ namespace DotNetCoreSqlDb.Controllers
 
                         if (page.results != null)
                         {
-                            foreach (Google.Api.Ads.AdManager.v202405.AdUnit adUnit in page.results)
+                            foreach (AdUnit adUnit in page.results)
                             {
+                                SiteMetadata site = adUnit.name.Contains(".") ? GetSite(adUnit.name) : null;
                                 System.DateTime lastModifiedDateTime = new System.DateTime(
                                     adUnit.lastModifiedDateTime.date.year,
                                     adUnit.lastModifiedDateTime.date.month,
@@ -290,7 +396,8 @@ namespace DotNetCoreSqlDb.Controllers
                                     IsNative = adUnit.isNative,
                                     RefreshRate = adUnit.refreshRate,
                                     SmartSizeMode = adUnit.smartSizeMode,
-                                    TargetWindow = adUnit.targetWindow
+                                    TargetWindow = adUnit.targetWindow,
+                                    Site = site
                                 };
 
                                 adUnits.Add(newAdUnit);
@@ -311,6 +418,65 @@ namespace DotNetCoreSqlDb.Controllers
         }
 
         /// <summary>
+        /// Get all placements.
+        /// </summary>
+        /// <returns> List of all placements </returns>
+        [HttpGet("placements")]
+        public IActionResult GetAllPlacements()
+        {
+            using (PlacementService placementService = user.GetService<PlacementService>())
+            {
+                try
+                {
+                    // Create a statement to select placements.
+                    int pageSize = StatementBuilder.SUGGESTED_PAGE_LIMIT;
+                    StatementBuilder statementBuilder =
+                        new StatementBuilder().OrderBy("id ASC").Limit(pageSize);
+
+                    // Retrieve a small amount of placements at a time, paging through until all
+                    // placements have been retrieved.
+                    int totalResultSetSize = 0;
+                    List<PlacementMetadata> placements = new List<PlacementMetadata>();
+                    do
+                    {
+                        PlacementPage page =
+                            placementService.getPlacementsByStatement(statementBuilder.ToStatement());
+
+                        // Print out some information for each placement.
+                        if (page.results != null)
+                        {
+                            totalResultSetSize = page.totalResultSetSize;
+                            int i = page.startIndex;
+                            foreach (Placement placement in page.results)
+                            {
+                                placements.Add(new PlacementMetadata
+                                {
+                                    Id = placement.id,
+                                    Name = placement.name,
+                                    Description = placement.description,
+                                    Code = placement.placementCode,
+                                    Status = placement.status.ToString(),
+                                    AdUnits = placement.targetedAdUnitIds
+                                });
+                            }
+                        }
+                        else
+                        {
+                            return BadRequest("No placements found.");
+                        }
+
+                        statementBuilder.IncreaseOffsetBy(pageSize);
+                    } while (statementBuilder.GetOffset() < totalResultSetSize);
+                    return Ok(placements);
+                }
+                catch (Exception e)
+                {
+                    return BadRequest($"Failed to get placements. Exception says \"{e.Message}\"");
+                }
+            }
+        }
+
+        /// <summary>
         /// Get all ad unit sizes.
         /// </summary>
         /// <returns> List of all ad unit sizes </returns>
@@ -324,12 +490,12 @@ namespace DotNetCoreSqlDb.Controllers
                     // Create a statement to select ad unit sizes.
                     StatementBuilder statementBuilder = new StatementBuilder();
 
-                    Google.Api.Ads.AdManager.v202405.AdUnitSize[] adUnitSizes =
+                    AdUnitSize[] adUnitSizes =
                     inventoryService.getAdUnitSizesByStatement(statementBuilder.ToStatement());
 
                     List<AdUnitSizeMetadata> adUnitSizesList = new List<AdUnitSizeMetadata>();
 
-                    foreach (Google.Api.Ads.AdManager.v202405.AdUnitSize adUnitSize in adUnitSizes)
+                    foreach (AdUnitSize adUnitSize in adUnitSizes)
                     {
                         adUnitSizesList.Add(new AdUnitSizeMetadata(adUnitSize.fullDisplayString, adUnitSize.environmentType.ToString(), adUnitSize.size.width, adUnitSize.size.height));
                     }
@@ -353,10 +519,10 @@ namespace DotNetCoreSqlDb.Controllers
             try
             {
                 // Get all ad units.
-                Google.Api.Ads.AdManager.v202405.AdUnit[] allAdUnits = GetAllAdUnits(user);
+                AdUnit[] allAdUnits = GetAllAdUnits(user);
 
                 // Find the root ad unit.
-                Google.Api.Ads.AdManager.v202405.AdUnit? rootAdUnit = allAdUnits.FirstOrDefault(a => a.parentId == "21808957681");
+                AdUnit? rootAdUnit = allAdUnits.FirstOrDefault(a => a.parentId == "21808957681");
 
                 // Build the ad unit tree.
                 AdUnitMetadata root = BuildAdUnitTree(rootAdUnit, allAdUnits);
@@ -375,7 +541,7 @@ namespace DotNetCoreSqlDb.Controllers
         /// <param name="rootAdUnit"></param>
         /// <param name="allAdUnits"></param>
         /// <returns> Ad Unit tree </returns>
-        private AdUnitMetadata BuildAdUnitTree(Google.Api.Ads.AdManager.v202405.AdUnit? rootAdUnit, Google.Api.Ads.AdManager.v202405.AdUnit[] allAdUnits)
+        private AdUnitMetadata BuildAdUnitTree(AdUnit? rootAdUnit, AdUnit[] allAdUnits)
         {
             if (rootAdUnit == null)
             {
@@ -393,7 +559,7 @@ namespace DotNetCoreSqlDb.Controllers
                 Children = new List<AdUnitMetadata>()
             };
 
-            foreach (Google.Api.Ads.AdManager.v202405.AdUnit adUnit in allAdUnits)
+            foreach (AdUnit adUnit in allAdUnits)
             {
                 if (adUnit.parentId == rootAdUnit.id)
                 {
@@ -410,12 +576,12 @@ namespace DotNetCoreSqlDb.Controllers
         /// </summary>
         /// <param name="user"></param>
         /// <returns> List of ad units </returns>
-        static Google.Api.Ads.AdManager.v202405.AdUnit[] GetAllAdUnits(AdManagerUser user)
+        static AdUnit[] GetAllAdUnits(AdManagerUser user)
         {
             using (InventoryService inventoryService = user.GetService<InventoryService>())
             {
                 // Create list to hold all ad units.
-                List<Google.Api.Ads.AdManager.v202405.AdUnit> adUnits = new List<Google.Api.Ads.AdManager.v202405.AdUnit>();
+                List<AdUnit> adUnits = new List<AdUnit>();
 
                 // Create a statement to get all ad units.
                 StatementBuilder statementBuilder = new StatementBuilder()
